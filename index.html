@@ -1,14 +1,12 @@
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
+
 <meta name="monetag" content="37079b62bce9806346d169e242bea786"/>
 
-    <script src="https://5gvci.com/act/files/tag.min.js?z=10958304" data-cfasync="false" async></script>
-
-  
-
+    <script src="https://quge5.com/88/tag.min.js" data-zone="235144" async data-cfasync="false"></script>
+    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title id="app-page-title">Earnix - Make Money Online (Updates Added)</title>
@@ -2996,6 +2994,12 @@
         window.initPayment = (type, amount, detail) => {
             if (!state.userUid) return authHandler.trigger();
             
+            // If it's a free activation, directly submit without showing any payment method selection or form
+            if (type === 'Activation' && amount === 0) {
+                window.submitPayment(null, type, amount, detail, 'N/A'); // 'N/A' for method since it's free
+                return;
+            }
+
             const depositMethods = Object.values(state.settings.depositMethods || {});
             if (depositMethods.length === 0) {
                 return Swal.fire({ // Changed alert to Swal.fire for consistency
@@ -3046,10 +3050,8 @@
         };
 
         window.goToPayStep2 = (type, fixedAmount, detail) => {
-            if (type === 'Activation' && fixedAmount === 0) {
-                window.submitPayment(null, type, fixedAmount, detail, 'N/A'); 
-                return;
-            }
+            // This function is now only called for payments with amount > 0,
+            // as free activation is handled directly in initPayment.
 
             const methodEl = document.querySelector('input[name="pay-method"]:checked');
             if (!methodEl) {
@@ -3164,8 +3166,9 @@
             let file = null;
             let encryptedImageData = null;
 
-            // Make screenshot mandatory for all types if amount > 0
-            if (amount > 0 || type === 'Activation') { 
+            // MODIFIED: Only require transaction details and screenshot if amount > 0.
+            // For free activation (amount === 0), no proof is needed.
+            if (amount > 0) { 
                 const trxIdEl = document.getElementById('trx-id');
                 const senderPhoneEl = document.getElementById('sender-phone');
                 const fileInput = document.getElementById('screenshot-file');
@@ -3190,7 +3193,7 @@
 
             try {
                 const btnTextSpan = btn ? btn.querySelector('.btn-text') : null;
-                if(file) {
+                if(file) { // Only process image if a file was selected (i.e., amount > 0)
                     if(btnTextSpan) btnTextSpan.textContent = window.appLang.t('processing_image') + "...";
                     encryptedImageData = await processAndEncryptImage(file);
                 } else {
@@ -3242,6 +3245,14 @@
                     baseTransaction.type = 'Activation';
                     baseTransaction.details = `Activation Request (Method: ${method}, TrxID: ${trx})`;
 
+                    // If it's a FREE activation, mark as approved directly
+                    if (amount === 0) {
+                        userUpdateData.isAccountActive = true;
+                        userUpdateData.pendingActivation = false;
+                        baseTransaction.status = 'approved';
+                        requestData.status = 'approved';
+                    }
+
                 } else if (type === 'Plan Purchase') {
                     targetCollectionRef = depositsRef; // This is actually a deposit record for the plan purchase
                     userUpdateData = {
@@ -3285,12 +3296,23 @@
                 await targetCollectionRef.child(transactionKey).set(requestData);
                 
                 ui.closeModal('gen-modal');
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Payment Request Submitted!',
-                    text: 'Your payment request is pending admin approval. Your plan will be activated after approval.',
-                    confirmButtonColor: '#6366f1'
-                });
+
+                // Show appropriate message based on if it was free activation or a paid request
+                if (type === 'Activation' && amount === 0) {
+                     Swal.fire({
+                        icon: 'success',
+                        title: 'Account Activated!',
+                        text: 'Your account has been successfully activated for free.',
+                        confirmButtonColor: '#6366f1'
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Payment Request Submitted!',
+                        text: 'Your payment request is pending admin approval. Your plan will be activated after approval.',
+                        confirmButtonColor: '#6366f1'
+                    });
+                }
                 
                 // Refresh UI based on the action taken
                 if (type === 'Activation') {
