@@ -983,7 +983,7 @@
                     </div>
                 </div>
 
-                <div id="step-2" class="hidden">
+                <div id="step-2">
                     <div class="space-y-4">
                         <div class="input-pro p-3 rounded-xl flex items-center">
                             <i class="fas fa-envelope text-gray-400 mr-3 ml-1"></i>
@@ -1610,8 +1610,15 @@
                     btnText.textContent = dict[state.currentLang].register_link;
                 }
                 
+                // START: MODIFIED - Load refCode from localStorage into the registration form
                 const storedRef = localStorage.getItem('refCode');
-                if(storedRef) document.getElementById('reg-ref').value = storedRef;
+                if(storedRef) {
+                    const regRefInput = document.getElementById('reg-ref');
+                    if (regRefInput) { // Null-safe check
+                        regRefInput.value = storedRef;
+                    }
+                }
+                // END: MODIFIED
 
                 authHandler.nextStep(1);
                 ui.updateText();
@@ -1943,6 +1950,14 @@
                 document.getElementById('login-form')?.addEventListener('submit', authHandler.login); // Null-safe
                 document.getElementById('reg-form')?.addEventListener('submit', authHandler.register); // Null-safe
                 
+                // START: MODIFIED - URL থেকে রেফার কোড চেক করা
+                const urlParams = new URLSearchParams(window.location.search);
+                const refCodeFromUrl = urlParams.get('ref');
+                if (refCodeFromUrl) {
+                    localStorage.setItem('refCode', refCodeFromUrl); // রেফার কোড লোকাল স্টোরেজে সেভ করা
+                }
+                // END: MODIFIED
+
                 settingsRootRef.once('value').then(snap => {
                     const allSettings = snap.val() || {};
                     state.settings.app = allSettings.app || {};
@@ -3166,7 +3181,7 @@
             let file = null;
             let encryptedImageData = null;
 
-            // MODIFIED: Only require transaction details and screenshot if amount > 0.
+            // MODIFIED START: Only require transaction details and screenshot if amount > 0.
             // For free activation (amount === 0), no proof is needed.
             if (amount > 0) { 
                 const trxIdEl = document.getElementById('trx-id');
@@ -3188,6 +3203,7 @@
                     return;
                 }
             }
+            // MODIFIED END
             
             if (btn) ui.loading(btn, true);
 
